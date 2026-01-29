@@ -26,6 +26,10 @@ public class LorealHomePage {
     private final By mainNavigationId = By.id("main-navigation");
     private final By mainNavigationRole = By.cssSelector("nav[role='navigation']");
 
+    // Group link (from Browser-use JSON)
+    private final By groupRootLinkXpath = By.xpath("html/body/div[2]/header/div/div[3]/nav/div/ul/li[1]/a");
+    private final By groupRootLinkCss = By.cssSelector("header div:nth-of-type(3) nav div ul li:nth-of-type(1) > a[href='/en/group/'][role='button']");
+
     // Logo (robust fallbacks)
     private final By headerRoot = By.tagName("header");
     private final By logoByClass = By.xpath("//header//a[contains(@class,'logo')]");
@@ -37,7 +41,7 @@ public class LorealHomePage {
     private final By loginOrSignIn = By.xpath(
             "//*[self::a or self::button]" +
             "[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') " +
-            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') " +
+            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','lowercase'),'log in') " +
             " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
     );
 
@@ -59,7 +63,10 @@ public class LorealHomePage {
                 btn.click();
                 log.info("Cookie consent accepted.");
                 // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                } catch (Exception ignored) {
+                }
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -107,6 +114,26 @@ public class LorealHomePage {
             }
         } catch (NoSuchElementException ignored) { }
         return false;
+    }
+
+    public boolean clickGroupRootAndWaitExpanded() {
+        log.info("Clicking 'Group' root link in the main navigation and waiting for expansion.");
+        WebElement group = waitShortForAny(groupRootLinkXpath, groupRootLinkCss);
+        if (group == null) {
+            throw new NoSuchElementException("Group link not found in header navigation.");
+        }
+        // Ensure clickable and then click
+        wait.until(ExpectedConditions.elementToBeClickable(group)).click();
+
+        // Wait for aria-expanded=true on the same anchor
+        try {
+            wait.until(ExpectedConditions.attributeContains(group, "aria-expanded", "true"));
+            log.info("'Group' navigation item expanded successfully.");
+            return true;
+        } catch (TimeoutException e) {
+            log.warning("'Group' navigation item did not expand (aria-expanded not true).");
+            return false;
+        }
     }
 
     private WebElement waitShortForAny(By... locators) {
