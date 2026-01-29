@@ -26,7 +26,11 @@ public class LorealHomePage {
     private final By mainNavigationId = By.id("main-navigation");
     private final By mainNavigationRole = By.cssSelector("nav[role='navigation']");
 
-    // Logo (robust fallbacks)
+    // Group link (from Browser-use JSON)
+    private final By groupLinkXpath = By.xpath("html/body/div[2]/header/div/div[3]/nav/div/ul/li[1]/a");
+    private final By groupLinkHref = By.cssSelector("header div:nth-of-type(3) nav div ul li:nth-of-type(1) > a[href='/en/group/'][role='button']");
+
+    // Header root and logo (robust fallbacks)
     private final By headerRoot = By.tagName("header");
     private final By logoByClass = By.xpath("//header//a[contains(@class,'logo')]");
     private final By logoSvg = By.xpath("//header//*[name()='svg' and contains(@class,'logo')]");
@@ -36,9 +40,9 @@ public class LorealHomePage {
     // Potential login/sign-in elements (assert non-existence)
     private final By loginOrSignIn = By.xpath(
             "//*[self::a or self::button]" +
-            "[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') " +
-            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') " +
-            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
+                    "[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') " +
+                    " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') " +
+                    " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
     );
 
     public LorealHomePage(WebDriver driver) {
@@ -59,7 +63,9 @@ public class LorealHomePage {
                 btn.click();
                 log.info("Cookie consent accepted.");
                 // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                } catch (Exception ignored) { }
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -96,6 +102,48 @@ public class LorealHomePage {
                 ExpectedConditions.visibilityOfElementLocated(mainNavigationRole)
         ));
         log.info("Main navigation appears opened.");
+    }
+
+    public boolean isMainNavigationOpen() {
+        log.info("Checking if main navigation is open.");
+        try {
+            WebElement burger = wait.until(ExpectedConditions.visibilityOfElementLocated(burgerButtonCss));
+            String expanded = burger.getAttribute("aria-expanded");
+            if ("true".equalsIgnoreCase(expanded)) return true;
+        } catch (Exception ignored) { }
+        try {
+            return driver.findElement(mainNavigationId).isDisplayed();
+        } catch (Exception ignored) { }
+        try {
+            return driver.findElement(mainNavigationRole).isDisplayed();
+        } catch (Exception ignored) { }
+        return false;
+    }
+
+    public void clickGroupNav() {
+        log.info("Clicking 'Group' navigation link (role=button).");
+        WebElement group = waitShortForAny(groupLinkXpath, groupLinkHref);
+        if (group == null) {
+            throw new NoSuchElementException("Unable to find 'Group' navigation link.");
+        }
+        try {
+            wait.until(ExpectedConditions.elementToBeClickable(group)).click();
+        } catch (Exception e) {
+            // Retry with JS in case of overlay animation
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", group);
+        }
+    }
+
+    public boolean isGroupNavExpanded() {
+        log.info("Validating that 'Group' navigation item is expanded.");
+        try {
+            WebElement group = waitShortForAny(groupLinkXpath, groupLinkHref);
+            if (group != null) {
+                String expanded = group.getAttribute("aria-expanded");
+                return "true".equalsIgnoreCase(expanded);
+            }
+        } catch (Exception ignored) { }
+        return false;
     }
 
     public boolean isLoginOptionPresent() {
