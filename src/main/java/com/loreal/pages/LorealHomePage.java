@@ -33,6 +33,12 @@ public class LorealHomePage {
     private final By logoImgAlt = By.xpath("//header//img[contains(@alt,\"L'Or\") or contains(@alt,'L’Or')]");
     private final By logoHrefEn = By.cssSelector("header a[href='/en/']");
 
+    // Search (from Browser-use JSON)
+    private final By searchInputXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/input[1]");
+    private final By searchInputId = By.id("site-search");
+    private final By searchSubmitXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/button");
+    private final By searchSubmitCss = By.cssSelector("button.btn.search-box__submit[type='submit']");
+
     // Potential login/sign-in elements (assert non-existence)
     private final By loginOrSignIn = By.xpath(
             "//*[self::a or self::button]" +
@@ -59,7 +65,10 @@ public class LorealHomePage {
                 btn.click();
                 log.info("Cookie consent accepted.");
                 // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                } catch (Exception ignored) {
+                }
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -107,6 +116,39 @@ public class LorealHomePage {
             }
         } catch (NoSuchElementException ignored) { }
         return false;
+    }
+
+    public void waitForSearchBox() {
+        log.info("Waiting for search input to be visible on the page.");
+        waitShortForAny(searchInputXpath, searchInputId);
+    }
+
+    public void typeInSearch(String query) {
+        log.info("Typing query into search box: " + query);
+        WebElement input = waitShortForAny(searchInputXpath, searchInputId);
+        if (input == null) {
+            throw new NoSuchElementException("Search input not found.");
+        }
+        try {
+            input.clear();
+        } catch (InvalidElementStateException ignored) {
+        }
+        input.sendKeys(query);
+    }
+
+    public void submitSearch() {
+        log.info("Submitting search request.");
+        WebElement submit = waitShortForAny(searchSubmitXpath, searchSubmitCss);
+        if (submit == null) {
+            throw new NoSuchElementException("Search submit button not found.");
+        }
+        submit.click();
+    }
+
+    public void performSearch(String query) {
+        waitForSearchBox();
+        typeInSearch(query);
+        submitSearch();
     }
 
     private WebElement waitShortForAny(By... locators) {
