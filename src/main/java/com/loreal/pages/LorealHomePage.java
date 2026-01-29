@@ -24,9 +24,13 @@ public class LorealHomePage {
     private final By burgerButtonXpath = By.xpath("html/body/div[2]/header/div/div[1]/button");
     private final By burgerButtonCss = By.cssSelector("header button.header__burger[aria-label='Open menu']");
     private final By mainNavigationId = By.id("main-navigation");
-    private final By mainNavigationRole = By.cssSelector("nav[role='navigation']");
+    private final By mainNavigationRole = By.cssSelector("header nav[role='navigation']");
 
-    // Logo (robust fallbacks)
+    // "Group" top navigation link (from Browser-use JSON)
+    private final By groupLinkXpath = By.xpath("html/body/div[2]/header/div/div[3]/nav/div/ul/li[1]/a");
+    private final By groupLinkCss = By.cssSelector("header nav a[href='/en/group/']");
+
+    // Header root / logo fallbacks
     private final By headerRoot = By.tagName("header");
     private final By logoByClass = By.xpath("//header//a[contains(@class,'logo')]");
     private final By logoSvg = By.xpath("//header//*[name()='svg' and contains(@class,'logo')]");
@@ -58,8 +62,9 @@ public class LorealHomePage {
             if (btn != null && btn.isDisplayed()) {
                 btn.click();
                 log.info("Cookie consent accepted.");
-                // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                } catch (Exception ignored) {}
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -84,18 +89,43 @@ public class LorealHomePage {
         try {
             burger.click();
         } catch (ElementClickInterceptedException e) {
-            // Fallback to CSS selector if needed
-            WebElement burgerCss = wait.until(ExpectedConditions.elementToBeClickable(burgerButtonCss));
-            burgerCss.click();
+            WebElement burgerCssEl = wait.until(ExpectedConditions.elementToBeClickable(burgerButtonCss));
+            burgerCssEl.click();
         }
 
-        // Wait until the menu is expanded/visible
         wait.until(anyOf(
                 ExpectedConditions.attributeContains(burgerButtonCss, "aria-expanded", "true"),
                 ExpectedConditions.visibilityOfElementLocated(mainNavigationId),
                 ExpectedConditions.visibilityOfElementLocated(mainNavigationRole)
         ));
         log.info("Main navigation appears opened.");
+    }
+
+    public boolean isMainMenuOpen() {
+        try {
+            // If aria-expanded attribute becomes true or the nav is visible, consider open
+            WebElement burger = wait.until(ExpectedConditions.visibilityOfElementLocated(burgerButtonCss));
+            String expanded = burger.getAttribute("aria-expanded");
+            if ("true".equalsIgnoreCase(expanded)) return true;
+
+            WebElement nav = driver.findElement(mainNavigationRole);
+            return nav.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public void clickGroupLink() {
+        log.info("Clicking on 'Group' link in the opened main navigation.");
+        WebElement groupEl = waitShortForAny(groupLinkXpath, groupLinkCss);
+        if (groupEl == null) {
+            throw new NoSuchElementException("Unable to locate 'Group' link in main navigation.");
+        }
+        try {
+            groupEl.click();
+        } catch (ElementClickInterceptedException e) {
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", groupEl);
+        }
     }
 
     public boolean isLoginOptionPresent() {
