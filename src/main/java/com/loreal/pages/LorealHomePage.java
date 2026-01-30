@@ -41,6 +41,13 @@ public class LorealHomePage {
             " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
     );
 
+    // Search box on home page (from Browser-use JSON)
+    private final By searchInputXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/input[1]");
+    private final By searchInputId = By.id("site-search");
+    private final By searchInputCss = By.cssSelector("input.search-box__input[name='q']");
+    private final By searchSubmitXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/button");
+    private final By searchSubmitCss = By.cssSelector("button.btn.search-box__submit[type='submit']");
+
     public LorealHomePage(WebDriver driver) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(15));
@@ -59,7 +66,9 @@ public class LorealHomePage {
                 btn.click();
                 log.info("Cookie consent accepted.");
                 // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                } catch (Exception ignored) { }
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -103,10 +112,31 @@ public class LorealHomePage {
         try {
             List<WebElement> elems = driver.findElements(loginOrSignIn);
             for (WebElement el : elems) {
-                if (el.isDisplayed()) return true;
+                try {
+                    if (el.isDisplayed()) return true;
+                } catch (StaleElementReferenceException ignored) { }
             }
         } catch (NoSuchElementException ignored) { }
         return false;
+    }
+
+    public LorealSearchPage searchFor(String query) {
+        log.info("Performing site search for query: " + query);
+        WebElement input = waitShortForAny(searchInputXpath, searchInputId, searchInputCss);
+        if (input == null) {
+            throw new NoSuchElementException("Search input not found on L'Oréal home page.");
+        }
+        input.clear();
+        input.sendKeys(query);
+
+        WebElement submit = waitShortForAny(searchSubmitXpath, searchSubmitCss);
+        if (submit == null) {
+            // try ENTER key if no button
+            input.sendKeys(Keys.ENTER);
+        } else {
+            submit.click();
+        }
+        return new LorealSearchPage(driver);
     }
 
     private WebElement waitShortForAny(By... locators) {
