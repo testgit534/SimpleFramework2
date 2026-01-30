@@ -16,9 +16,11 @@ public class LorealHomePage {
     private final WebDriver driver;
     private final WebDriverWait wait;
 
-    // Cookie banner (from Browser-use JSON)
+    // Cookie banner variations (from Browser-use JSON and common patterns)
     private final By cookieAcceptBtnXpath = By.xpath("html/body/div[3]/div[2]/div/div/div[2]/div/div/button");
     private final By cookieAcceptBtnId = By.id("onetrust-accept-btn-handler");
+    private final By cookieCloseBtnCss = By.cssSelector("button.onetrust-close-btn-handler.banner-close-button.ot-close-link");
+    private final By cookieBannerRootId = By.id("onetrust-banner-sdk");
 
     // Burger / Main Navigation (from Browser-use JSON)
     private final By burgerButtonXpath = By.xpath("html/body/div[2]/header/div/div[1]/button");
@@ -36,10 +38,17 @@ public class LorealHomePage {
     // Potential login/sign-in elements (assert non-existence)
     private final By loginOrSignIn = By.xpath(
             "//*[self::a or self::button]" +
-            "[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') " +
-            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') " +
-            " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
+                    "[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'login') " +
+                    " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'log in') " +
+                    " or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'sign in')]"
     );
+
+    // Search box (from Browser-use JSON step 77)
+    private final By searchInputXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/input[1]");
+    private final By searchInputId = By.id("site-search");
+    private final By searchInputCss = By.cssSelector("input.search-box__input");
+    private final By searchSubmitXpath = By.xpath("html/body/div[2]/main/div[1]/div/form/section/div[2]/div[1]/button");
+    private final By searchSubmitCss = By.cssSelector("button.btn.search-box__submit[type='submit']");
 
     public LorealHomePage(WebDriver driver) {
         this.driver = driver;
@@ -52,14 +61,16 @@ public class LorealHomePage {
     }
 
     public void acceptCookiesIfPresent() {
-        log.info("Attempting to accept cookies if banner is present.");
+        log.info("Attempting to accept/close cookies if banner is present.");
         try {
-            WebElement btn = waitShortForAny(cookieAcceptBtnXpath, cookieAcceptBtnId);
+            WebElement btn = waitShortForAny(cookieAcceptBtnXpath, cookieAcceptBtnId, cookieCloseBtnCss);
             if (btn != null && btn.isDisplayed()) {
                 btn.click();
-                log.info("Cookie consent accepted.");
-                // wait for banner to disappear
-                wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("onetrust-banner-sdk")));
+                log.info("Cookie consent handled.");
+                // wait for banner to disappear if exists
+                try {
+                    wait.until(ExpectedConditions.invisibilityOfElementLocated(cookieBannerRootId));
+                } catch (TimeoutException ignored) { }
             }
         } catch (Exception e) {
             log.info("Cookie banner not present or already handled.");
@@ -84,7 +95,6 @@ public class LorealHomePage {
         try {
             burger.click();
         } catch (ElementClickInterceptedException e) {
-            // Fallback to CSS selector if needed
             WebElement burgerCss = wait.until(ExpectedConditions.elementToBeClickable(burgerButtonCss));
             burgerCss.click();
         }
@@ -107,6 +117,23 @@ public class LorealHomePage {
             }
         } catch (NoSuchElementException ignored) { }
         return false;
+    }
+
+    public LorealSearchPage search(String query) {
+        log.info("Performing site search for query: " + query);
+        WebElement input = waitShortForAny(searchInputXpath, searchInputId, searchInputCss);
+        if (input == null) {
+            throw new NoSuchElementException("Search input not found on L'Oréal home page.");
+        }
+        input.clear();
+        input.sendKeys(query);
+
+        WebElement submit = waitShortForAny(searchSubmitXpath, searchSubmitCss);
+        if (submit == null) {
+            throw new NoSuchElementException("Search submit button not found on L'Oréal home page.");
+        }
+        submit.click();
+        return new LorealSearchPage(driver);
     }
 
     private WebElement waitShortForAny(By... locators) {
