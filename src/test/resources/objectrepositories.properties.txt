@@ -1,0 +1,11 @@
+# Login Page Locators
+
+login.username.xpath=//input[@id='user-name']
+login.password.xpath=//input[@id='password']
+login.button.xpath=//input[@id='login-button']
+
+login.username.datatest=css:input[data-test='username']
+login.password.datatest=css:input[data-test='password']
+login.button.datatest=css:input[data-test='login-button']
+
+login.error.message=css:[data-test='error']
