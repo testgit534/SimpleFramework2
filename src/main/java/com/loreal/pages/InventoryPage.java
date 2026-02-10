@@ -5,6 +5,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
+import java.util.NoSuchElementException;
 
 public class InventoryPage {
 
@@ -17,6 +18,12 @@ public class InventoryPage {
     private final By cartLinkDataTest = By.cssSelector("a[data-test='shopping-cart-link']");
     private final By cartLinkClass = By.cssSelector("a.shopping_cart_link");
     private final By cartContainerId = By.id("shopping_cart_container");
+
+    // Added robust locators for inventory items and add-to-cart buttons
+    private final By inventoryItemContainer = By.cssSelector(".inventory_item");
+    private final By inventoryItemName = By.cssSelector(".inventory_item_name");
+    private final By addToCartButtonByText = By.xpath(".//button[contains(normalize-space(.),'Add to cart')]");
+    private final By cartBadge = By.cssSelector(".shopping_cart_badge");
 
     public InventoryPage(WebDriver driver) {
         this.driver = driver;
@@ -59,5 +66,43 @@ public class InventoryPage {
     public void clickCart() {
         WebElement cart = findWithFallback(cartLinkDataTest, cartLinkClass, cartContainerId);
         cart.click();
+    }
+
+    // New methods
+
+    public void addProductToCartByName(String productName) {
+        // Locate specific inventory item card by product name and click its Add to cart button
+        By itemCardByName = By.xpath("//div[contains(@class,'inventory_item')][.//div[contains(@class,'inventory_item_name') and normalize-space()='" + productName + "']]");
+        WebElement itemCard = wait.until(ExpectedConditions.visibilityOfElementLocated(itemCardByName));
+
+        // Primary: button with text "Add to cart" within the item card
+        try {
+            WebElement addBtn = itemCard.findElement(addToCartButtonByText);
+            wait.until(ExpectedConditions.elementToBeClickable(addBtn)).click();
+            return;
+        } catch (NoSuchElementException ignored) {
+        }
+
+        // Fallback: known data-test or id for some products (Swag Labs common)
+        String slug = productName.toLowerCase().replace(" ", "-");
+        By addBtnById = By.id("add-to-cart-" + slug);
+        By addBtnByDataTest = By.cssSelector("button[data-test='add-to-cart-" + slug + "']");
+        try {
+            WebElement addBtn = itemCard.findElement(addBtnById);
+            wait.until(ExpectedConditions.elementToBeClickable(addBtn)).click();
+        } catch (NoSuchElementException e) {
+            WebElement addBtn = itemCard.findElement(addBtnByDataTest);
+            wait.until(ExpectedConditions.elementToBeClickable(addBtn)).click();
+        }
+    }
+
+    public int getCartBadgeCount() {
+        try {
+            WebElement badge = wait.until(ExpectedConditions.visibilityOfElementLocated(cartBadge));
+            String text = badge.getText().trim();
+            return Integer.parseInt(text);
+        } catch (TimeoutException | NoSuchElementException e) {
+            return 0;
+        }
     }
 }
