@@ -39,4 +39,32 @@ public class CartPage {
             return titleEl.getText().trim();
         }
     }
+
+    public boolean isItemPresent(String productName) {
+        By nameXpath = By.xpath("//div[contains(@class,'cart_item')]//div[contains(@class,'inventory_item_name') and normalize-space()='" + escapeXPath(productName) + "']");
+        try {
+            wait.until(ExpectedConditions.visibilityOfElementLocated(nameXpath));
+            return true;
+        } catch (TimeoutException e) {
+            return false;
+        }
+    }
+
+    public int getItemQuantity(String productName) {
+        By rowXpath = By.xpath("//div[contains(@class,'cart_item')]" +
+                "[.//div[contains(@class,'inventory_item_name') and normalize-space()='" + escapeXPath(productName) + "']]" +
+                "//div[contains(@class,'cart_quantity')]");
+        try {
+            WebElement qtyEl = wait.until(ExpectedConditions.visibilityOfElementLocated(rowXpath));
+            String qty = qtyEl.getText().trim();
+            return Integer.parseInt(qty);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String escapeXPath(String text) {
+        if (!text.contains("'")) return text;
+        return "concat('" + text.replace("'", "',\"'\",'") + "')";
+    }
 }

@@ -4,6 +4,7 @@ import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.text.Normalizer;
 import java.time.Duration;
 
 public class InventoryPage {
@@ -17,6 +18,7 @@ public class InventoryPage {
     private final By cartLinkDataTest = By.cssSelector("a[data-test='shopping-cart-link']");
     private final By cartLinkClass = By.cssSelector("a.shopping_cart_link");
     private final By cartContainerId = By.id("shopping_cart_container");
+    private final By cartBadgeCss = By.cssSelector("span.shopping_cart_badge");
 
     public InventoryPage(WebDriver driver) {
         this.driver = driver;
@@ -59,5 +61,47 @@ public class InventoryPage {
     public void clickCart() {
         WebElement cart = findWithFallback(cartLinkDataTest, cartLinkClass, cartContainerId);
         cart.click();
+    }
+
+    public void addProductToCartByName(String productName) {
+        // Prefer data-test based add-to-cart button: add-to-cart-{slugified name}
+        String slug = slugify(productName);
+        By dataTestBtn = By.cssSelector("button[data-test='add-to-cart-" + slug + "']");
+        // Fallback to locating by visible product name then add-to-cart button
+        By xpathBtn = By.xpath("//div[contains(@class,'inventory_item_name') and normalize-space()='" + escapeXPath(productName) + "']" +
+                "/ancestor::div[contains(@class,'inventory_item')]//button[contains(translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'add to cart')]");
+
+        try {
+            WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(5))
+                    .until(ExpectedConditions.elementToBeClickable(dataTestBtn));
+            btn.click();
+        } catch (TimeoutException | NoSuchElementException e) {
+            WebElement btn = new WebDriverWait(driver, Duration.ofSeconds(10))
+                    .until(ExpectedConditions.elementToBeClickable(xpathBtn));
+            btn.click();
+        }
+    }
+
+    public int getCartBadgeCount() {
+        try {
+            WebElement badge = new WebDriverWait(driver, Duration.ofSeconds(5))
+                    .until(ExpectedConditions.visibilityOfElementLocated(cartBadgeCss));
+            String text = badge.getText().trim();
+            return Integer.parseInt(text);
+        } catch (TimeoutException | NoSuchElementException e) {
+            return 0;
+        }
+    }
+
+    private String slugify(String input) {
+        String nowhitespace = input.trim().toLowerCase().replaceAll("\\s+", "-");
+        String normalized = Normalizer.normalize(nowhitespace, Normalizer.Form.NFD).replaceAll("[^\\p{ASCII}]", "");
+        return normalized.replaceAll("[^a-z0-9\\-]", "");
+    }
+
+    private String escapeXPath(String text) {
+        if (!text.contains("'")) return text;
+        // handle single quotes in XPath literal
+        return "concat('" + text.replace("'", "',\"'\",'") + "')";
     }
 }
