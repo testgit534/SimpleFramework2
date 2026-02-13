@@ -11,48 +11,45 @@ import java.util.logging.Logger;
 
 public class SauceDemoE2ETest extends BaseTest {
 
-    private static final Logger logger = Logger.getLogger(SauceDemoE2ETest.class.getName());
+    private static final Logger log = Logger.getLogger(SauceDemoE2ETest.class.getName());
 
     @Test
-    public void loginNavigateToCart_e2e() {
-        logger.info("Starting E2E test: Login using preferred (xpath-first) locators and navigate to Cart.");
+    public void loginNavigateToCart_EndToEnd() {
+        log.info("Starting end-to-end test: Login -> Inventory -> Cart");
 
-        // Login Page
+        // Step 1: Login Page
         LoginPage loginPage = new LoginPage(driver);
-        logger.info("Waiting for Login page to be ready.");
+        log.info("Waiting for login page to be ready.");
         loginPage.waitForLoginPage();
 
-        logger.info("Performing login using preferred locators (xpath -> css -> id).");
+        log.info("Logging in using preferred locators (XPath first, then fallbacks).");
         loginPage.loginUsingPreferredLocators("standard_user", "secret_sauce");
 
-        // Inventory Page
+        // Step 2: Inventory Page
         InventoryPage inventoryPage = new InventoryPage(driver);
-        logger.info("Waiting for Inventory page to load.");
+        log.info("Waiting for Inventory page to load.");
         inventoryPage.waitForPage();
 
-        String currentUrl = driver.getCurrentUrl();
-        logger.info("Asserting Inventory page URL and title.");
-        Assert.assertTrue(currentUrl.contains("/inventory.html"),
-                "Expected to navigate to inventory page, but URL was: " + currentUrl);
-        Assert.assertEquals(inventoryPage.getTitleText(), "Products",
-                "Inventory page title mismatch.");
+        String inventoryTitle = inventoryPage.getTitleText();
+        log.info("Asserting Inventory title. Actual: " + inventoryTitle);
+        Assert.assertEquals(inventoryTitle, "Products", "Inventory page title should be 'Products'.");
 
-        // Navigate to Cart
-        logger.info("Clicking on Cart link using robust fallback locators.");
+        // Step 3: Navigate to Cart
+        log.info("Clicking on the cart link.");
         inventoryPage.clickCart();
 
-        // Cart Page
+        // Step 4: Cart Page
         CartPage cartPage = new CartPage(driver);
-        logger.info("Waiting for Cart page to load.");
+        log.info("Waiting for Cart page to load.");
         cartPage.waitForPage();
 
-        String cartUrl = driver.getCurrentUrl();
-        logger.info("Asserting Cart page URL and title.");
-        Assert.assertTrue(cartUrl.contains("/cart.html"),
-                "Expected to navigate to cart page, but URL was: " + cartUrl);
-        Assert.assertEquals(cartPage.getTitleText(), "Your Cart",
-                "Cart page title mismatch.");
+        String cartTitle = cartPage.getTitleText();
+        log.info("Asserting Cart page title. Actual: " + cartTitle);
+        Assert.assertEquals(cartTitle, "Your Cart", "Cart page title should be 'Your Cart'.");
 
-        logger.info("E2E test completed successfully: User logged in and navigated to Cart.");
+        log.info("Asserting URL contains 'cart.html'.");
+        Assert.assertTrue(driver.getCurrentUrl().contains("cart.html"), "URL should contain 'cart.html'.");
+
+        log.info("End-to-end test completed successfully.");
     }
 }
